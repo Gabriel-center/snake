@@ -42,8 +42,8 @@
         canvas { position: absolute; top: 0; left: 0; display: block; image-rendering: pixelated; width: 100%; height: 100%; z-index: 1; }
         
         #host-lobby-ui { position: absolute; top: 20px; left: 20px; z-index: 5; background: rgba(0,0,0,0.8); padding: 20px; border: 2px solid #fff; }
-        .settings-panel label { display: block; margin: 15px 0; font-size: 0.6rem; line-height: 2;}
-        .settings-panel input[type="range"] { vertical-align: middle; width: 100px; }
+        .settings-panel label { display: block; margin: 15px 0; font-size: 0.8rem; line-height: 2;}
+        .settings-panel input[type="range"] { vertical-align: middle; }
         
         #btn-fullscreen { position: absolute; top: 20px; right: 20px; z-index: 10; padding: 10px; font-size: 0.8rem; }
         #countdown-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 6rem; color: #fff; z-index: 20; }
@@ -52,28 +52,19 @@
         #player-controller { background: #000; }
         #mobile-stats-bar { position: absolute; top: 5%; width: 100%; text-align: center; font-size: 1rem; color: #fff; z-index: 5; pointer-events: none;}
         
-        /* Control Zones */
+        /* Left Half for Dash */
         #left-controls { position: absolute; left: 0; top: 0; width: 50vw; height: 100vh; }
+        #dash-btn { 
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            width: 140px; height: 140px; border-radius: 50%; background: #111; 
+            border: 4px solid #555; color: #aaa; font-size: 1.2rem; 
+            display: flex; justify-content: center; align-items: center; transition: 0.1s;
+        }
+        #dash-btn.active { background: #fff; color: #000; border-color: #fff; }
+        
+        /* Right Half for Joystick */
         #right-controls { position: absolute; right: 0; top: 0; width: 50vw; height: 100vh; }
-
-        /* Visual Suggestions (Ghosts) */
-        .control-ghost {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 100px; height: 100px; border-radius: 50%;
-            border: 2px dashed rgba(255, 255, 255, 0.2);
-            pointer-events: none; /* Let touches pass through */
-            display: flex; justify-content: center; align-items: center;
-            color: rgba(255, 255, 255, 0.2); font-size: 0.8rem;
-        }
-
-        /* Actual Dash Button (Moves to finger) */
-        #dash-active-visual { 
-            position: absolute; display: none;
-            width: 120px; height: 120px; border-radius: 50%; background: rgba(255, 255, 255, 0.8); 
-            border: 4px solid #fff; color: #000; font-size: 1rem; 
-            justify-content: center; align-items: center; pointer-events: none;
-            transform: translate(-50%, -50%);
-        }
+        #joystick-zone { width: 100%; height: 100%; position: relative; }
 
         /* === ROTATE PHONE OVERLAY === */
         #rotate-phone-overlay { 
@@ -98,25 +89,24 @@
         <button id="btn-choose-join">JOIN GAME (Mobile)</button>
     </div>
 
-    <!-- 2. HOST UI -->
+    <!-- 2. HOST UI (Canvas sits behind this) -->
     <div id="host-lobby-ui" class="hidden">
         <h2 style="font-size: 1.2rem;">CODE: <span id="display-room-code" style="color: #0f0;">-----</span></h2>
         <div class="settings-panel">
-            <label>Start Width: <input type="range" id="set-width" min="1" max="10" value="3"> <span id="val-width">3px</span></label>
-            <label>Max Food: <input type="range" id="set-max-food" min="50" max="300" value="100"> <span id="val-max-food">100</span></label>
-            <label>Spawn Rate: <input type="range" id="set-food-rate" min="1" max="10" value="4"></label>
+            <label>Food Amount: <input type="range" id="set-food" min="1" max="10" value="5"></label>
             <label>CPU Bots: <input type="number" id="set-bots" min="0" max="15" value="3" style="width: 50px;"></label>
         </div>
         <h3 style="font-size: 0.8rem; margin: 15px 0;">Players: <span id="player-count">0</span></h3>
         <button id="btn-start-game" style="margin: 0; padding: 15px; font-size: 0.8rem;">START BATTLE</button>
     </div>
     
-    <button id="btn-fullscreen" class="hidden">[ FULLSCREEN ]</button>
+    <button id="btn-fullscreen" class="hidden">[  ]</button>
     <div id="countdown-overlay" class="hidden">5</div>
     
+    <!-- Game Canvas (Used for both Lobby Physics and the Actual Game) -->
     <canvas id="gameCanvas" class="hidden"></canvas>
     
-    <!-- Hidden div for QR logic -->
+    <!-- Hidden div to generate the QR code canvas -->
     <div id="hidden-qr" style="display:none;"></div>
 
     <!-- 3. PLAYER LOGIN -->
@@ -126,8 +116,14 @@
         <input type="text" id="input-username" placeholder="USERNAME" maxlength="10" style="width: 80%;">
         
         <div class="color-picker-group">
-            <div><p style="margin-bottom:5px;">BODY</p><input type="color" id="input-color" value="#00ff00"></div>
-            <div><p style="margin-bottom:5px;">OUTLINE</p><input type="color" id="input-outline" value="#ffffff"></div>
+            <div>
+                <p style="margin-bottom:10px;">BODY</p>
+                <input type="color" id="input-color" value="#00ff00">
+            </div>
+            <div>
+                <p style="margin-bottom:10px;">OUTLINE</p>
+                <input type="color" id="input-outline" value="#ffffff">
+            </div>
         </div>
 
         <button id="btn-join-room">CONNECT</button>
@@ -137,14 +133,10 @@
     <!-- 4. PLAYER CONTROLLER -->
     <div id="player-controller" class="screen hidden">
         <div id="mobile-stats-bar">SCORE: <span id="mobile-score">0</span></div>
-        
         <div id="left-controls">
-            <div class="control-ghost">DASH</div>
-            <div id="dash-active-visual">>>></div>
+            <div id="dash-btn">DASH</div>
         </div>
-        
         <div id="right-controls">
-            <div class="control-ghost">MOVE</div>
             <div id="joystick-zone"></div>
         </div>
     </div>
@@ -168,7 +160,7 @@
 
     <script>
         /* =========================================================
-           UTILS & SETTINGS
+           FULLSCREEN & UTILS
            ========================================================= */
         let hasEnteredFullscreen = false;
         function enterFullscreen() {
@@ -177,12 +169,11 @@
             if (elem.requestFullscreen) { elem.requestFullscreen().catch(()=>{}); } 
             else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); }
             hasEnteredFullscreen = true;
-            document.getElementById('btn-fullscreen').classList.add('hidden');
         }
 
-        document.getElementById('btn-fullscreen').onclick = enterFullscreen;
-        document.getElementById('set-width').oninput = (e) => document.getElementById('val-width').innerText = e.target.value + 'px';
-        document.getElementById('set-max-food').oninput = (e) => document.getElementById('val-max-food').innerText = e.target.value;
+        document.getElementById('btn-fullscreen').onclick = () => {
+            hasEnteredFullscreen = false; enterFullscreen();
+        };
 
         const screens =['main-menu', 'player-login', 'player-controller', 'player-death'];
         function switchScreen(screenId) {
@@ -204,6 +195,7 @@
         let peer = null; let connection = null; 
         let roomCode = ''; let isHost = false;
         let hostConnections = {}; 
+        
         let appState = 'MENU'; // MENU -> LOBBY -> GAME
 
         document.getElementById('btn-choose-host').onclick = initHost;
@@ -222,9 +214,13 @@
             
             document.getElementById('display-room-code').innerText = roomCode;
 
+            // Generate QR Code into hidden div
             const joinUrl = window.location.origin + window.location.pathname + '?code=' + roomCode;
             new QRCode(document.getElementById("hidden-qr"), { text: joinUrl, width: 200, height: 200, colorDark: "#000", colorLight: "#fff" });
-            setTimeout(() => { qrImageCanvas = document.querySelector('#hidden-qr canvas'); }, 500);
+            
+            setTimeout(() => {
+                qrImageCanvas = document.querySelector('#hidden-qr canvas');
+            }, 500);
 
             peer = new Peer(roomCode);
             peer.on('connection', (conn) => {
@@ -261,7 +257,6 @@
         document.getElementById('btn-start-game').onclick = () => {
             enterFullscreen();
             document.getElementById('host-lobby-ui').classList.add('hidden');
-            startGameEngine(); // Init settings
             startCountdown();
         };
 
@@ -269,6 +264,7 @@
             let overlay = document.getElementById('countdown-overlay');
             overlay.classList.remove('hidden');
             let count = 5; overlay.innerText = count;
+            
             let interval = setInterval(() => {
                 count--;
                 if (count > 0) { overlay.innerText = count; } 
@@ -276,28 +272,30 @@
                     clearInterval(interval);
                     overlay.classList.add('hidden');
                     
-                    // Circle Spawn
-                    let radius = Math.min(canvas.width, canvas.height) * 0.35;
+                    // Reset all players to a circle for the start
+                    let radius = Math.min(canvas.width, canvas.height) * 0.4;
                     let angleStep = (Math.PI * 2) / Math.max(1, snakes.length);
                     snakes.forEach((s, idx) => {
                         s.x = canvas.width/2 + Math.cos(angleStep * idx) * radius;
                         s.y = canvas.height/2 + Math.sin(angleStep * idx) * radius;
                         s.angle = Math.atan2(canvas.height/2 - s.y, canvas.width/2 - s.x);
                         s.targetAngle = s.angle;
-                        s.body =[]; s.maxLength = 50; 
+                        s.body =[]; // Clear tails
                     });
+
                     appState = 'GAME';
+                    startGameEngine();
                 }
             }, 1000);
         }
 
         /* =========================================================
-           HOST GAME ENGINE
+           HOST GAME ENGINE (Slither.io Mechanics + 3px strict)
            ========================================================= */
         const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d', { alpha: false }); 
-        let snakes =[], foods = [];
-        let settings = { baseWidth: 3, maxFood: 100, foodRate: 5, bots: 3 };
+        const ctx = canvas.getContext('2d', { alpha: false }); // Opt for pure black background
+        let snakes =[], foods = [], particles =[];
+        let settings = { foodRate: 5, bots: 3 };
         
         let qrBox = { x: 0, y: 0, w: 200, h: 200, vx: 0, vy: 0 };
         let qrImageCanvas = null;
@@ -314,17 +312,18 @@
                 this.color = color; this.outlineColor = outlineColor || '#ffffff';
                 this.isBot = isBot; this.conn = conn;
                 
+                // Spawn randomly if lobby, otherwise organized later
                 this.x = Math.random() * canvas.width;
                 this.y = Math.random() * canvas.height;
                 this.angle = Math.random() * Math.PI * 2;
                 this.targetAngle = this.angle;
                 
                 this.body =[]; 
-                this.maxLength = 50; 
+                this.maxLength = 40; // Since speed is slow, we need more history segments
                 this.isDashing = false; this.dashTimer = 0; this.isDead = false;
                 this.invulnTimer = 90; 
                 
-                this.score = 0; this.timeSpawned = Date.now(); this.maxAchievedLength = 50;
+                this.score = 0; this.timeSpawned = Date.now(); this.maxAchievedLength = 40;
             }
         }
 
@@ -337,7 +336,7 @@
             foods.push({
                 x: x || Math.random() * canvas.width,
                 y: y || Math.random() * canvas.height,
-                size: size || (Math.random() < 0.1 ? 4 : 2),
+                size: size || (Math.random() < 0.1 ? 3 : 1), // Tiny pixel sizes
                 color: `hsl(${Math.random()*360}, 100%, 70%)`
             });
         }
@@ -345,14 +344,15 @@
         function killSnake(deadSnake) {
             deadSnake.isDead = true;
             deadSnake.body.forEach((segment, index) => {
-                if (index % 10 === 0) spawnFood(segment.x, segment.y, 3); // Drop food on death
+                if (index % 15 === 0) spawnFood(segment.x, segment.y, 2);
             });
+
             if (!deadSnake.isBot && deadSnake.conn) {
                 deadSnake.conn.send({
                     type: 'death',
                     stats: {
                         time: Math.floor((Date.now() - deadSnake.timeSpawned) / 1000),
-                        maxLen: Math.floor(deadSnake.maxAchievedLength),
+                        maxLen: deadSnake.maxAchievedLength,
                         score: deadSnake.score
                     }
                 });
@@ -361,38 +361,42 @@
 
         function startGameEngine() {
             settings = {
-                baseWidth: parseInt(document.getElementById('set-width').value),
-                maxFood: parseInt(document.getElementById('set-max-food').value),
-                foodRate: parseInt(document.getElementById('set-food-rate').value),
+                foodRate: parseInt(document.getElementById('set-food').value),
                 bots: parseInt(document.getElementById('set-bots').value)
             };
             for (let i=0; i<settings.bots; i++) {
                 spawnSnake('bot_'+i, 'CPU', `hsl(${Math.random()*360}, 100%, 50%)`, '#333333', true);
             }
-            for (let i=0; i<settings.maxFood / 2; i++) spawnFood();
+            for (let i=0; i<80; i++) spawnFood();
         }
 
         function gameLoop() {
+            // Pure black background
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // === LOBBY QR PHYSICS ===
-            if (appState === 'LOBBY' && qrImageCanvas) {
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(qrBox.x - 4, qrBox.y - 4, qrBox.w + 8, qrBox.h + 8);
-                ctx.drawImage(qrImageCanvas, qrBox.x, qrBox.y, qrBox.w, qrBox.h);
-                qrBox.x += qrBox.vx; qrBox.y += qrBox.vy;
-                qrBox.vx *= 0.92; qrBox.vy *= 0.92;
-                if (qrBox.x < 0) { qrBox.x = 0; qrBox.vx *= -1; }
-                if (qrBox.x + qrBox.w > canvas.width) { qrBox.x = canvas.width - qrBox.w; qrBox.vx *= -1; }
-                if (qrBox.y < 0) { qrBox.y = 0; qrBox.vy *= -1; }
-                if (qrBox.y + qrBox.h > canvas.height) { qrBox.y = canvas.height - qrBox.h; qrBox.vy *= -1; }
+            // === LOBBY PHYSICS (QR CODE PUSHING) ===
+            if (appState === 'LOBBY') {
+                if (qrImageCanvas) {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(qrBox.x - 4, qrBox.y - 4, qrBox.w + 8, qrBox.h + 8);
+                    ctx.drawImage(qrImageCanvas, qrBox.x, qrBox.y, qrBox.w, qrBox.h);
+                    
+                    // Apply velocity and friction
+                    qrBox.x += qrBox.vx; qrBox.y += qrBox.vy;
+                    qrBox.vx *= 0.92; qrBox.vy *= 0.92;
+
+                    // Screen bounds
+                    if (qrBox.x < 0) { qrBox.x = 0; qrBox.vx *= -1; }
+                    if (qrBox.x + qrBox.w > canvas.width) { qrBox.x = canvas.width - qrBox.w; qrBox.vx *= -1; }
+                    if (qrBox.y < 0) { qrBox.y = 0; qrBox.vy *= -1; }
+                    if (qrBox.y + qrBox.h > canvas.height) { qrBox.y = canvas.height - qrBox.h; qrBox.vy *= -1; }
+                }
             }
 
             // === GAME LOGIC ===
             if (appState === 'GAME') {
-                // Limit Max Food
-                if (foods.length < settings.maxFood && Math.random() < settings.foodRate * 0.02) spawnFood();
+                if (Math.random() < settings.foodRate * 0.02) spawnFood();
                 
                 foods.forEach(f => {
                     ctx.fillStyle = f.color;
@@ -405,89 +409,68 @@
                 if (snake.isDead) return;
                 if (snake.invulnTimer > 0) snake.invulnTimer--;
 
-                // Dynamic Width Calculation (Slither-style girth)
-                let currentThickness = settings.baseWidth + (Math.min(snake.maxLength, 500) / 40);
-
-                // Bot Logic (Improved)
-                if (snake.isBot) {
-                    if (appState === 'GAME') {
-                        let closestFood = null; let minDist = Infinity;
-                        foods.forEach(f => {
-                            let d = Math.hypot(snake.x - f.x, snake.y - f.y);
-                            // Smart AI: Only chase food inside a 120 degree cone in front (avoid spinning)
-                            let angleToFood = Math.atan2(f.y - snake.y, f.x - snake.x);
-                            let angleDiff = Math.abs(angleToFood - snake.angle);
-                            if (angleDiff > Math.PI) angleDiff = (Math.PI * 2) - angleDiff;
-                            
-                            if (d < minDist && angleDiff < 1.5) { 
-                                minDist = d; closestFood = f; 
-                            }
-                        });
-
-                        if (closestFood) snake.targetAngle = Math.atan2(closestFood.y - snake.y, closestFood.x - snake.x);
-                        // Less Dash spamming for bots
-                        snake.isDashing = (minDist < 60 && snake.maxLength > 80 && Math.random() < 0.05);
-                    } else {
-                        // Lobby wander
-                        if (Math.random() < 0.05) snake.targetAngle += (Math.random() - 0.5);
-                    }
+                // Bot Logic
+                if (snake.isBot && appState === 'GAME') {
+                    let closestFood = null; let minDist = Infinity;
+                    foods.forEach(f => {
+                        let d = Math.hypot(snake.x - f.x, snake.y - f.y);
+                        if (d < minDist) { minDist = d; closestFood = f; }
+                    });
+                    if (closestFood) snake.targetAngle = Math.atan2(closestFood.y - snake.y, closestFood.x - snake.x);
+                    snake.isDashing = (minDist < 50 && snake.maxLength > 50);
+                } else if (snake.isBot && appState === 'LOBBY') {
+                    // Bots just wander in lobby
+                    if (Math.random() < 0.05) snake.targetAngle += (Math.random() - 0.5);
                 }
 
-                // Turning Physics
+                // Slow, weighty turning
                 let diff = snake.targetAngle - snake.angle;
                 while (diff < -Math.PI) diff += Math.PI * 2;
                 while (diff > Math.PI) diff -= Math.PI * 2;
-                // Turn speed slower as you get bigger
-                let turnSpeed = Math.max(0.04, 0.1 - (currentThickness * 0.002));
-                snake.angle += diff * turnSpeed; 
+                snake.angle += diff * 0.08; 
 
-                // Speed Physics
-                let speed = 2; // Default speed
+                // SLOWER speed for better control
+                let currentSpeed = 0.8; 
                 if (snake.isDashing && snake.maxLength > 20) {
-                    speed = 4;
-                    // Costly Dash
+                    currentSpeed = 1.6;
                     snake.dashTimer++;
-                    if (snake.dashTimer > 5) { // Lose mass every 5 frames
-                        snake.dashTimer = 0; 
-                        snake.maxLength -= 1; 
-                        if (snake.body.length > 0) {
-                            let dropP = snake.body[snake.body.length-1];
-                            spawnFood(dropP.x, dropP.y, 1);
-                        }
+                    if (snake.dashTimer > 15) {
+                        snake.dashTimer = 0; snake.maxLength -= 2; // Lose length slightly faster
+                        if (snake.body.length > 0) spawnFood(snake.body[snake.body.length-1].x, snake.body[snake.body.length-1].y, 1);
                     }
                 }
 
-                snake.x += Math.cos(snake.angle) * speed;
-                snake.y += Math.sin(snake.angle) * speed;
+                snake.x += Math.cos(snake.angle) * currentSpeed;
+                snake.y += Math.sin(snake.angle) * currentSpeed;
 
+                // Wrap-around
                 if (snake.x < 0) snake.x += canvas.width;
                 if (snake.x > canvas.width) snake.x -= canvas.width;
                 if (snake.y < 0) snake.y += canvas.height;
                 if (snake.y > canvas.height) snake.y -= canvas.height;
 
+                snake.body.unshift({x: snake.x, y: snake.y});
+                if (snake.body.length > snake.maxLength) snake.body.pop();
+
                 // Lobby QR Collision
                 if (appState === 'LOBBY' && qrImageCanvas) {
-                    let cx = qrBox.x + qrBox.w/2; let cy = qrBox.y + qrBox.h/2;
-                    if (Math.abs(snake.x - cx) < qrBox.w/2 + 10 && Math.abs(snake.y - cy) < qrBox.h/2 + 10) {
-                        qrBox.vx += Math.cos(snake.angle) * 0.5;
-                        qrBox.vy += Math.sin(snake.angle) * 0.5;
+                    let testX = snake.x; let testY = snake.y;
+                    if (snake.x < qrBox.x) testX = qrBox.x; else if (snake.x > qrBox.x + qrBox.w) testX = qrBox.x + qrBox.w;
+                    if (snake.y < qrBox.y) testY = qrBox.y; else if (snake.y > qrBox.y + qrBox.h) testY = qrBox.y + qrBox.h;
+                    if (Math.hypot(snake.x - testX, snake.y - testY) < 3) {
+                        qrBox.vx += Math.cos(snake.angle) * 1.5;
+                        qrBox.vy += Math.sin(snake.angle) * 1.5;
                     }
                 }
 
-                snake.body.unshift({x: snake.x, y: snake.y});
-                // Calculate distance based on speed to prevent body gaps
-                let historyLimit = Math.floor(snake.maxLength * (3/speed)); 
-                if (snake.body.length > snake.maxLength) snake.body.pop();
-
-                // Eat
+                // Eat Food
                 if (appState === 'GAME') {
                     for (let i = foods.length - 1; i >= 0; i--) {
                         let f = foods[i];
                         let d = Math.hypot(snake.x - f.x, snake.y - f.y);
-                        if (d > canvas.width/2) continue;
-                        // Hitbox grows with thickness
-                        if (d < currentThickness + f.size) {
-                            snake.maxLength += (f.size > 2 ? 5 : 1);
+                        if (d > canvas.width/2) continue; 
+                        if (d < 4 + f.size) { // Strict tiny hitboxes
+                            snake.maxLength += (f.size > 2 ? 8 : 3);
                             if (snake.maxLength > snake.maxAchievedLength) snake.maxAchievedLength = snake.maxLength;
                             snake.score += (f.size > 2 ? 5 : 1);
                             foods.splice(i, 1);
@@ -495,8 +478,6 @@
                         }
                     }
                 }
-
-                snake.currentThickness = currentThickness; // Store for collision and drawing
             });
 
             // Collisions
@@ -509,16 +490,15 @@
                         let sB = snakes[j];
                         if (sA === sB || sB.isDead || sB.invulnTimer > 0) continue;
 
-                        // Check body parts (skip head area)
-                        for (let k = 15; k < sB.body.length; k++) {
+                        // Check body parts (skipping the very front ones to prevent instant self-head collision glitches)
+                        for (let k = 10; k < sB.body.length; k++) {
                             let seg = sB.body[k];
                             let dx = Math.abs(sA.x - seg.x); let dy = Math.abs(sA.y - seg.y);
                             if (dx > canvas.width/2) dx = canvas.width - dx;
                             if (dy > canvas.height/2) dy = canvas.height - dy;
 
-                            // Collision: Distance < (MyRadius + EnemyRadius)
-                            let collisionDist = sA.currentThickness + sB.currentThickness - 2; 
-                            if (Math.hypot(dx, dy) < collisionDist) {
+                            // 2px collision radius for the tiny snake
+                            if (Math.hypot(dx, dy) < 2.5) {
                                 killSnake(sA);
                                 break;
                             }
@@ -528,43 +508,45 @@
                 }
             }
 
-            // Draw Snakes
+            // Draw Snakes (Slither.io Overlapping Tube Style - Exactly 3 Pixels)
             snakes.forEach(snake => {
                 if (snake.isDead) return;
+
                 let isFlashing = snake.invulnTimer > 0 && Math.floor(Date.now() / 100) % 2 === 0;
                 let strokeC = isFlashing ? '#fff' : snake.outlineColor;
                 let fillC = isFlashing ? '#fff' : snake.color;
-                
-                // Draw Body (Tail to Head)
-                let step = Math.max(1, Math.floor(snake.currentThickness / 3));
 
-                for (let i = snake.body.length - 1; i >= 0; i-=step) {
+                // Draw from Tail to Head for Z-depth overlapping
+                for (let i = snake.body.length - 1; i >= 0; i--) {
                     let p = snake.body[i];
-                    let prev = (i + step < snake.body.length) ? snake.body[i+step] : p;
+                    let prev = i < snake.body.length - 1 ? snake.body[i+1] : p;
+                    
+                    // Don't draw segment if it wrapped around the screen
                     if (Math.abs(p.x - prev.x) > canvas.width/2 || Math.abs(p.y - prev.y) > canvas.height/2) continue;
 
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, snake.currentThickness, 0, Math.PI*2);
+                    ctx.arc(p.x, p.y, 1, 0, Math.PI*2); // Radius 1px
                     ctx.fillStyle = fillC; ctx.fill();
-                    ctx.strokeStyle = strokeC; ctx.lineWidth = 1; ctx.stroke();
+                    ctx.lineWidth = 1; // 1px radius + 1px outline = 3 pixels total diameter visually
+                    ctx.strokeStyle = strokeC; ctx.stroke();
                 }
 
-                // Head
+                // Draw Head
                 ctx.beginPath();
-                ctx.arc(snake.x, snake.y, snake.currentThickness + 1, 0, Math.PI*2);
+                ctx.arc(snake.x, snake.y, 1.2, 0, Math.PI*2); // Head slightly bigger (3.4px)
                 ctx.fillStyle = fillC; ctx.fill();
-                ctx.strokeStyle = strokeC; ctx.stroke();
+                ctx.lineWidth = 1; ctx.strokeStyle = strokeC; ctx.stroke();
 
-                // Name
+                // Tiny Name Tag
                 if (appState === 'GAME') {
                     ctx.fillStyle = '#fff';
-                    ctx.font = '10px "Press Start 2P"';
+                    ctx.font = '8px "Press Start 2P"';
                     ctx.textAlign = 'center';
-                    ctx.fillText(snake.name, Math.floor(snake.x), Math.floor(snake.y) - snake.currentThickness - 10);
+                    ctx.fillText(snake.name, Math.floor(snake.x), Math.floor(snake.y) - 8);
                 }
             });
 
-            // Respawn Bots
+            // Clean dead bots
             if (appState === 'GAME') {
                 snakes = snakes.filter(s => {
                     if (!s.isDead) return true;
@@ -572,19 +554,19 @@
                     return false;
                 });
             }
+
             requestAnimationFrame(gameLoop);
         }
 
         /* =========================================================
-           PLAYER MOBILE LOGIC (Dynamic Touch)
+           PLAYER MOBILE LOGIC
            ========================================================= */
-        let myName = '', myColor = '', myOutline = '';
-        let joystickManager = null;
+        let myName = '', myColor = '', myOutline = '', joystickManager = null;
         let isDashing = false, currentAngle = 0, inputInterval = null;
 
         document.getElementById('btn-join-room').onclick = () => {
             enterFullscreen(); 
-            document.body.classList.add('is-mobile-player');
+            document.body.classList.add('is-mobile-player'); // Activates the rotate-phone overlay CSS
             
             let code = document.getElementById('input-room-code').value.toUpperCase();
             myName = document.getElementById('input-username').value || 'P1';
@@ -603,6 +585,7 @@
                     connection.send({ type: 'join', name: myName, color: myColor, outline: myOutline });
                     initPlayerController();
                 });
+
                 connection.on('data', (data) => {
                     if (data.type === 'death') showDeathScreen(data.stats);
                     else if (data.type === 'score') document.getElementById('mobile-score').innerText = data.score;
@@ -615,43 +598,28 @@
             switchScreen('player-controller');
             document.getElementById('mobile-score').innerText = '0';
 
-            // DYNAMIC JOYSTICK (Right Side)
             if (joystickManager) joystickManager.destroy();
+            
+            // Joystick precisely centered in the Right Half
             joystickManager = nipplejs.create({
-                zone: document.getElementById('right-controls'),
-                mode: 'dynamic', // Creates joystick wherever you touch
-                color: '#ffffff',
-                size: 120
+                zone: document.getElementById('joystick-zone'),
+                mode: 'static',
+                position: { left: '50%', top: '50%' }, 
+                size: 140,
+                color: '#ffffff'
             });
-            joystickManager.on('move', (evt, data) => { currentAngle = -data.angle.radian; });
 
-            // DYNAMIC DASH (Left Side)
-            let leftZone = document.getElementById('left-controls');
-            let dashVisual = document.getElementById('dash-active-visual');
+            joystickManager.on('move', (evt, data) => {
+                currentAngle = -data.angle.radian; 
+            });
 
-            leftZone.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                let touch = e.changedTouches[0];
-                isDashing = true;
-                dashVisual.style.display = 'flex';
-                dashVisual.style.left = touch.clientX + 'px';
-                dashVisual.style.top = touch.clientY + 'px';
-            }, {passive: false});
+            let dashBtn = document.getElementById('dash-btn');
+            dashBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isDashing = true; dashBtn.classList.add('active'); }, {passive: false});
+            dashBtn.addEventListener('touchend', (e) => { e.preventDefault(); isDashing = false; dashBtn.classList.remove('active'); }, {passive: false});
+            
+            dashBtn.addEventListener('mousedown', () => { isDashing = true; dashBtn.classList.add('active'); });
+            dashBtn.addEventListener('mouseup', () => { isDashing = false; dashBtn.classList.remove('active'); });
 
-            leftZone.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                let touch = e.changedTouches[0];
-                dashVisual.style.left = touch.clientX + 'px';
-                dashVisual.style.top = touch.clientY + 'px';
-            }, {passive: false});
-
-            leftZone.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                isDashing = false;
-                dashVisual.style.display = 'none';
-            }, {passive: false});
-
-            // Start Input Loop
             if (inputInterval) clearInterval(inputInterval);
             inputInterval = setInterval(() => {
                 if (connection && connection.open) {
