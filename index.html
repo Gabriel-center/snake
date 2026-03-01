@@ -406,7 +406,6 @@
                 if (snake.invulnTimer > 0) snake.invulnTimer--;
 
                 // Dynamic Width Calculation (Slither-style girth)
-                // Base width + (length / 50)
                 let currentThickness = settings.baseWidth + (Math.min(snake.maxLength, 500) / 40);
 
                 // Bot Logic (Improved)
@@ -420,7 +419,7 @@
                             let angleDiff = Math.abs(angleToFood - snake.angle);
                             if (angleDiff > Math.PI) angleDiff = (Math.PI * 2) - angleDiff;
                             
-                            if (d < minDist && angleDiff < 1.5) { // < 1.5 radians is approx 85 degrees
+                            if (d < minDist && angleDiff < 1.5) { 
                                 minDist = d; closestFood = f; 
                             }
                         });
@@ -518,7 +517,6 @@
                             if (dy > canvas.height/2) dy = canvas.height - dy;
 
                             // Collision: Distance < (MyRadius + EnemyRadius)
-                            // A safer collision is slightly smaller than visual radius to be forgiving
                             let collisionDist = sA.currentThickness + sB.currentThickness - 2; 
                             if (Math.hypot(dx, dy) < collisionDist) {
                                 killSnake(sA);
@@ -538,7 +536,6 @@
                 let fillC = isFlashing ? '#fff' : snake.color;
                 
                 // Draw Body (Tail to Head)
-                // We skip points to optimize drawing and make it look like segments
                 let step = Math.max(1, Math.floor(snake.currentThickness / 3));
 
                 for (let i = snake.body.length - 1; i >= 0; i-=step) {
@@ -610,7 +607,7 @@
                     if (data.type === 'death') showDeathScreen(data.stats);
                     else if (data.type === 'score') document.getElementById('mobile-score').innerText = data.score;
                 });
-                connection.on('error', () => status.innerText = "CONNECTION FAILED.";);
+                connection.on('error', () => status.innerText = "CONNECTION FAILED.");
             });
         };
 
