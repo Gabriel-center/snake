@@ -89,7 +89,7 @@
         <button id="btn-choose-join">JOIN GAME (Mobile)</button>
     </div>
 
-    <!-- 2. HOST UI (Canvas sits behind this) -->
+    <!-- 2. HOST UI -->
     <div id="host-lobby-ui" class="hidden">
         <h2 style="font-size: 1.2rem;">CODE: <span id="display-room-code" style="color: #0f0;">-----</span></h2>
         <div class="settings-panel">
@@ -103,10 +103,8 @@
     <button id="btn-fullscreen" class="hidden">[  ]</button>
     <div id="countdown-overlay" class="hidden">5</div>
     
-    <!-- Game Canvas (Used for both Lobby Physics and the Actual Game) -->
+    <!-- Game Canvas -->
     <canvas id="gameCanvas" class="hidden"></canvas>
-    
-    <!-- Hidden div to generate the QR code canvas -->
     <div id="hidden-qr" style="display:none;"></div>
 
     <!-- 3. PLAYER LOGIN -->
@@ -195,8 +193,7 @@
         let peer = null; let connection = null; 
         let roomCode = ''; let isHost = false;
         let hostConnections = {}; 
-        
-        let appState = 'MENU'; // MENU -> LOBBY -> GAME
+        let appState = 'MENU';
 
         document.getElementById('btn-choose-host').onclick = initHost;
         document.getElementById('btn-choose-join').onclick = () => switchScreen('player-login');
@@ -214,7 +211,6 @@
             
             document.getElementById('display-room-code').innerText = roomCode;
 
-            // Generate QR Code into hidden div
             const joinUrl = window.location.origin + window.location.pathname + '?code=' + roomCode;
             new QRCode(document.getElementById("hidden-qr"), { text: joinUrl, width: 200, height: 200, colorDark: "#000", colorLight: "#fff" });
             
@@ -271,8 +267,6 @@
                 else {
                     clearInterval(interval);
                     overlay.classList.add('hidden');
-                    
-                    // Reset all players to a circle for the start
                     let radius = Math.min(canvas.width, canvas.height) * 0.4;
                     let angleStep = (Math.PI * 2) / Math.max(1, snakes.length);
                     snakes.forEach((s, idx) => {
@@ -280,9 +274,8 @@
                         s.y = canvas.height/2 + Math.sin(angleStep * idx) * radius;
                         s.angle = Math.atan2(canvas.height/2 - s.y, canvas.width/2 - s.x);
                         s.targetAngle = s.angle;
-                        s.body =[]; // Clear tails
+                        s.body =[];
                     });
-
                     appState = 'GAME';
                     startGameEngine();
                 }
@@ -290,11 +283,11 @@
         }
 
         /* =========================================================
-           HOST GAME ENGINE (Slither.io Mechanics + 3px strict)
+           HOST GAME ENGINE
            ========================================================= */
         const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d', { alpha: false }); // Opt for pure black background
-        let snakes =[], foods = [], particles =[];
+        const ctx = canvas.getContext('2d', { alpha: false });
+        let snakes =[], foods = [];
         let settings = { foodRate: 5, bots: 3 };
         
         let qrBox = { x: 0, y: 0, w: 200, h: 200, vx: 0, vy: 0 };
@@ -311,18 +304,13 @@
                 this.id = id; this.name = name || (isBot ? 'CPU' : 'P1'); 
                 this.color = color; this.outlineColor = outlineColor || '#ffffff';
                 this.isBot = isBot; this.conn = conn;
-                
-                // Spawn randomly if lobby, otherwise organized later
                 this.x = Math.random() * canvas.width;
                 this.y = Math.random() * canvas.height;
                 this.angle = Math.random() * Math.PI * 2;
                 this.targetAngle = this.angle;
-                
-                this.body =[]; 
-                this.maxLength = 40; // Since speed is slow, we need more history segments
+                this.body =[]; this.maxLength = 40; 
                 this.isDashing = false; this.dashTimer = 0; this.isDead = false;
                 this.invulnTimer = 90; 
-                
                 this.score = 0; this.timeSpawned = Date.now(); this.maxAchievedLength = 40;
             }
         }
@@ -336,7 +324,7 @@
             foods.push({
                 x: x || Math.random() * canvas.width,
                 y: y || Math.random() * canvas.height,
-                size: size || (Math.random() < 0.1 ? 3 : 1), // Tiny pixel sizes
+                size: size || (Math.random() < 0.1 ? 3 : 1),
                 color: `hsl(${Math.random()*360}, 100%, 70%)`
             });
         }
@@ -371,22 +359,16 @@
         }
 
         function gameLoop() {
-            // Pure black background
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // === LOBBY PHYSICS (QR CODE PUSHING) ===
             if (appState === 'LOBBY') {
                 if (qrImageCanvas) {
                     ctx.fillStyle = '#fff';
                     ctx.fillRect(qrBox.x - 4, qrBox.y - 4, qrBox.w + 8, qrBox.h + 8);
                     ctx.drawImage(qrImageCanvas, qrBox.x, qrBox.y, qrBox.w, qrBox.h);
-                    
-                    // Apply velocity and friction
                     qrBox.x += qrBox.vx; qrBox.y += qrBox.vy;
                     qrBox.vx *= 0.92; qrBox.vy *= 0.92;
-
-                    // Screen bounds
                     if (qrBox.x < 0) { qrBox.x = 0; qrBox.vx *= -1; }
                     if (qrBox.x + qrBox.w > canvas.width) { qrBox.x = canvas.width - qrBox.w; qrBox.vx *= -1; }
                     if (qrBox.y < 0) { qrBox.y = 0; qrBox.vy *= -1; }
@@ -394,22 +376,18 @@
                 }
             }
 
-            // === GAME LOGIC ===
             if (appState === 'GAME') {
                 if (Math.random() < settings.foodRate * 0.02) spawnFood();
-                
                 foods.forEach(f => {
                     ctx.fillStyle = f.color;
                     ctx.beginPath(); ctx.arc(f.x, f.y, f.size, 0, Math.PI*2); ctx.fill();
                 });
             }
 
-            // Update Snakes
             snakes.forEach(snake => {
                 if (snake.isDead) return;
                 if (snake.invulnTimer > 0) snake.invulnTimer--;
 
-                // Bot Logic
                 if (snake.isBot && appState === 'GAME') {
                     let closestFood = null; let minDist = Infinity;
                     foods.forEach(f => {
@@ -419,23 +397,20 @@
                     if (closestFood) snake.targetAngle = Math.atan2(closestFood.y - snake.y, closestFood.x - snake.x);
                     snake.isDashing = (minDist < 50 && snake.maxLength > 50);
                 } else if (snake.isBot && appState === 'LOBBY') {
-                    // Bots just wander in lobby
                     if (Math.random() < 0.05) snake.targetAngle += (Math.random() - 0.5);
                 }
 
-                // Slow, weighty turning
                 let diff = snake.targetAngle - snake.angle;
                 while (diff < -Math.PI) diff += Math.PI * 2;
                 while (diff > Math.PI) diff -= Math.PI * 2;
                 snake.angle += diff * 0.08; 
 
-                // SLOWER speed for better control
                 let currentSpeed = 0.8; 
                 if (snake.isDashing && snake.maxLength > 20) {
                     currentSpeed = 1.6;
                     snake.dashTimer++;
                     if (snake.dashTimer > 15) {
-                        snake.dashTimer = 0; snake.maxLength -= 2; // Lose length slightly faster
+                        snake.dashTimer = 0; snake.maxLength -= 2;
                         if (snake.body.length > 0) spawnFood(snake.body[snake.body.length-1].x, snake.body[snake.body.length-1].y, 1);
                     }
                 }
@@ -443,7 +418,6 @@
                 snake.x += Math.cos(snake.angle) * currentSpeed;
                 snake.y += Math.sin(snake.angle) * currentSpeed;
 
-                // Wrap-around
                 if (snake.x < 0) snake.x += canvas.width;
                 if (snake.x > canvas.width) snake.x -= canvas.width;
                 if (snake.y < 0) snake.y += canvas.height;
@@ -452,7 +426,6 @@
                 snake.body.unshift({x: snake.x, y: snake.y});
                 if (snake.body.length > snake.maxLength) snake.body.pop();
 
-                // Lobby QR Collision
                 if (appState === 'LOBBY' && qrImageCanvas) {
                     let testX = snake.x; let testY = snake.y;
                     if (snake.x < qrBox.x) testX = qrBox.x; else if (snake.x > qrBox.x + qrBox.w) testX = qrBox.x + qrBox.w;
@@ -463,13 +436,12 @@
                     }
                 }
 
-                // Eat Food
                 if (appState === 'GAME') {
                     for (let i = foods.length - 1; i >= 0; i--) {
                         let f = foods[i];
                         let d = Math.hypot(snake.x - f.x, snake.y - f.y);
                         if (d > canvas.width/2) continue; 
-                        if (d < 4 + f.size) { // Strict tiny hitboxes
+                        if (d < 4 + f.size) {
                             snake.maxLength += (f.size > 2 ? 8 : 3);
                             if (snake.maxLength > snake.maxAchievedLength) snake.maxAchievedLength = snake.maxLength;
                             snake.score += (f.size > 2 ? 5 : 1);
@@ -480,64 +452,48 @@
                 }
             });
 
-            // Collisions
             if (appState === 'GAME') {
                 for (let i=0; i<snakes.length; i++) {
                     let sA = snakes[i];
                     if (sA.isDead || sA.invulnTimer > 0) continue;
-
                     for (let j=0; j<snakes.length; j++) {
                         let sB = snakes[j];
                         if (sA === sB || sB.isDead || sB.invulnTimer > 0) continue;
-
-                        // Check body parts (skipping the very front ones to prevent instant self-head collision glitches)
                         for (let k = 10; k < sB.body.length; k++) {
                             let seg = sB.body[k];
                             let dx = Math.abs(sA.x - seg.x); let dy = Math.abs(sA.y - seg.y);
                             if (dx > canvas.width/2) dx = canvas.width - dx;
                             if (dy > canvas.height/2) dy = canvas.height - dy;
-
-                            // 2px collision radius for the tiny snake
-                            if (Math.hypot(dx, dy) < 2.5) {
-                                killSnake(sA);
-                                break;
-                            }
+                            if (Math.hypot(dx, dy) < 2.5) { killSnake(sA); break; }
                         }
                         if (sA.isDead) break;
                     }
                 }
             }
 
-            // Draw Snakes (Slither.io Overlapping Tube Style - Exactly 3 Pixels)
             snakes.forEach(snake => {
                 if (snake.isDead) return;
-
                 let isFlashing = snake.invulnTimer > 0 && Math.floor(Date.now() / 100) % 2 === 0;
                 let strokeC = isFlashing ? '#fff' : snake.outlineColor;
                 let fillC = isFlashing ? '#fff' : snake.color;
 
-                // Draw from Tail to Head for Z-depth overlapping
                 for (let i = snake.body.length - 1; i >= 0; i--) {
                     let p = snake.body[i];
                     let prev = i < snake.body.length - 1 ? snake.body[i+1] : p;
-                    
-                    // Don't draw segment if it wrapped around the screen
                     if (Math.abs(p.x - prev.x) > canvas.width/2 || Math.abs(p.y - prev.y) > canvas.height/2) continue;
 
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, 1, 0, Math.PI*2); // Radius 1px
+                    ctx.arc(p.x, p.y, 1, 0, Math.PI*2);
                     ctx.fillStyle = fillC; ctx.fill();
-                    ctx.lineWidth = 1; // 1px radius + 1px outline = 3 pixels total diameter visually
+                    ctx.lineWidth = 1;
                     ctx.strokeStyle = strokeC; ctx.stroke();
                 }
 
-                // Draw Head
                 ctx.beginPath();
-                ctx.arc(snake.x, snake.y, 1.2, 0, Math.PI*2); // Head slightly bigger (3.4px)
+                ctx.arc(snake.x, snake.y, 1.2, 0, Math.PI*2);
                 ctx.fillStyle = fillC; ctx.fill();
                 ctx.lineWidth = 1; ctx.strokeStyle = strokeC; ctx.stroke();
 
-                // Tiny Name Tag
                 if (appState === 'GAME') {
                     ctx.fillStyle = '#fff';
                     ctx.font = '8px "Press Start 2P"';
@@ -546,7 +502,6 @@
                 }
             });
 
-            // Clean dead bots
             if (appState === 'GAME') {
                 snakes = snakes.filter(s => {
                     if (!s.isDead) return true;
@@ -559,14 +514,16 @@
         }
 
         /* =========================================================
-           PLAYER MOBILE LOGIC
+           PLAYER MOBILE LOGIC (FIXED NETWORK)
            ========================================================= */
         let myName = '', myColor = '', myOutline = '', joystickManager = null;
         let isDashing = false, currentAngle = 0, inputInterval = null;
+        let lastSentAngle = -999;
+        let lastSentDash = false;
 
         document.getElementById('btn-join-room').onclick = () => {
             enterFullscreen(); 
-            document.body.classList.add('is-mobile-player'); // Activates the rotate-phone overlay CSS
+            document.body.classList.add('is-mobile-player');
             
             let code = document.getElementById('input-room-code').value.toUpperCase();
             myName = document.getElementById('input-username').value || 'P1';
@@ -579,9 +536,12 @@
             
             peer = new Peer(); 
             peer.on('open', () => {
-                connection = peer.connect(code);
+                // THE FIX: { reliable: false } PREVENTS TCP HEAD-OF-LINE BLOCKING
+                connection = peer.connect(code, { reliable: false });
+                
                 connection.on('open', () => {
                     status.innerText = "CONNECTED!";
+                    // Initial join is vital, so we send it reliably separately or just hope it hits
                     connection.send({ type: 'join', name: myName, color: myColor, outline: myOutline });
                     initPlayerController();
                 });
@@ -600,7 +560,6 @@
 
             if (joystickManager) joystickManager.destroy();
             
-            // Joystick precisely centered in the Right Half
             joystickManager = nipplejs.create({
                 zone: document.getElementById('joystick-zone'),
                 mode: 'static',
@@ -623,7 +582,12 @@
             if (inputInterval) clearInterval(inputInterval);
             inputInterval = setInterval(() => {
                 if (connection && connection.open) {
-                    connection.send({ type: 'input', angle: currentAngle, dash: isDashing });
+                    // NETWORK OPTIMIZATION: Only send data if it changed significantly to prevent congestion
+                    if (Math.abs(currentAngle - lastSentAngle) > 0.05 || isDashing !== lastSentDash) {
+                         connection.send({ type: 'input', angle: currentAngle, dash: isDashing });
+                         lastSentAngle = currentAngle;
+                         lastSentDash = isDashing;
+                    }
                 }
             }, 50);
         }
